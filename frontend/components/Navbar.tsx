@@ -22,8 +22,8 @@ export default function Navbar() {
         </Link>
 
         {/* Liens desktop */}
-        <nav className="hidden md:flex items-center gap-1">
-          {links.map((l) => {
+        <nav className="hidden md:flex items-center gap-1"> n,;:!
+§ :;,nbvcxcvbn,;: !          {links.map((l) => {
             const Icon = l.icon;
             return (
               <Link

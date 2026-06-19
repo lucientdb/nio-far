@@ -76,24 +76,55 @@ export default function InscriptionPage() {
     prenom: "",
     nom: "",
     email: "",
-    password: "",
+    mot_de_passe: "",
     confirm: "",
     ville: "",
-    handicap: "",
+    type_handicap: "",
     cgu: false,
   });
 
   const setField = (key: keyof typeof form, val: string | boolean) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
+  const [loadingCreate, setLoadingCreate] = useState(false);
+  const [erreurCreate, setErreurCreate] = useState("");
+
+  const createAccount = async () => {
+    if (!etape2Ok) return;
+    setLoadingCreate(true);
+    setErreurCreate("");
+    try {
+      const res = await fetch("http://127.0.0.1:8000/api/auth/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          nom: form.nom,
+          prenom: form.prenom,
+          email: form.email,
+          mot_de_passe: form.mot_de_passe,
+          type_handicap: form.type_handicap,
+          bio: "",
+        }),
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.detail || "Erreur lors de l'inscription");
+      setEtape(3);
+    } catch (err: any) {
+      setErreurCreate(err.message || String(err));
+    } finally {
+      setLoadingCreate(false);
+    }
+  };
+
   // ---- Validation mot de passe ----
   const pwRules = [
-    { label: "8 caractères minimum", ok: form.password.length >= 8 },
-    { label: "Une lettre majuscule", ok: /[A-Z]/.test(form.password) },
-    { label: "Un chiffre", ok: /[0-9]/.test(form.password) },
+    { label: "8 caractères minimum", ok: form.mot_de_passe.length >= 8 },
+    { label: "Une lettre majuscule", ok: /[A-Z]/.test(form.mot_de_passe) },
+    { label: "Un chiffre", ok: /[0-9]/.test(form.mot_de_passe) },
   ];
   const pwOk = pwRules.every(r => r.ok);
-  const confirmOk = form.password === form.confirm && form.confirm !== "";
+  const confirmOk = form.mot_de_passe === form.confirm && form.confirm !== "";
 
   const etape1Ok = profil !== "";
   const etape2Ok =
@@ -310,8 +341,8 @@ export default function InscriptionPage() {
                     <span className="text-gray-400 font-semibold">(optionnel)</span>
                   </label>
                   <select
-                    value={form.handicap}
-                    onChange={e => setField("handicap", e.target.value)}
+                    value={form.type_handicap}
+                    onChange={e => setField("type_handicap", e.target.value)}
                     className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold bg-white appearance-none cursor-pointer"
                   >
                     <option value="">Préférer ne pas préciser</option>
@@ -338,8 +369,8 @@ export default function InscriptionPage() {
                   <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
                   <input
                     type={showPassword ? "text" : "password"}
-                    value={form.password}
-                    onChange={e => setField("password", e.target.value)}
+                    value={form.mot_de_passe}
+                    onChange={e => setField("mot_de_passe", e.target.value)}
                     placeholder="Minimum 8 caractères"
                     autoComplete="new-password"
                     className="w-full pl-10 pr-12 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold"
@@ -355,7 +386,7 @@ export default function InscriptionPage() {
                 </div>
 
                 {/* Règles */}
-                {form.password && (
+                {form.mot_de_passe && (
                   <div className="mt-3 flex flex-col gap-2">
                     {pwRules.map(r => (
                       <div key={r.label} className="flex items-center gap-2">
@@ -435,12 +466,17 @@ export default function InscriptionPage() {
                 </span>
               </label>
 
+              {erreurCreate && (
+                <div className="bg-red-50 border-2 border-red-200 p-3 rounded-xl mb-3">
+                  <p className="text-red-700 font-bold">{erreurCreate}</p>
+                </div>
+              )}
               <button
-                onClick={() => setEtape(3)}
-                disabled={!etape2Ok}
+                onClick={createAccount}
+                disabled={!etape2Ok || loadingCreate}
                 className="w-full bg-gray-900 text-white font-black text-base py-4 rounded-xl hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
               >
-                Créer mon compte <ArrowRight size={18} />
+                {loadingCreate ? "Création..." : "Créer mon compte"} <ArrowRight size={18} />
               </button>
             </div>
           )}

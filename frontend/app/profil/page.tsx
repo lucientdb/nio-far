@@ -32,12 +32,12 @@ const utilisateur = {
   email: "aminata@email.com",
   ville: "Dakar",
   profession: "Ingénieure informatique",
-  typeHandicap: "Déficience visuelle",
+  type_handicap: "Déficience visuelle",
   typeProfil: "personne",
   bio: "Ingénieure passionnée par le numérique inclusif. Je partage mon expérience pour inspirer d'autres personnes en situation de handicap à poursuivre leurs rêves dans la tech.",
   membre_depuis: "Janvier 2024",
   document_verified: false,
-  avatar: null as string | null,
+  avatar_url: null as string | null,
   stats: {
     publications: 4,
     likesRecus: 312,
@@ -644,14 +644,14 @@ export default function ProfilPage() {
   const [modalCertification, setModalCertification] = useState(false);
   const [editBio, setEditBio] = useState(false);
   const [bio, setBio] = useState(user.bio);
-  const [avatar, setAvatar] = useState<string | null>(null);
+  const [avatar_url, setAvatarUrl] = useState<string | null>(null);
   const avatarRef = useRef<HTMLInputElement>(null);
 
   const handleAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
-      setAvatar(url);
+      setAvatarUrl(url);
     }
   };
 
@@ -679,8 +679,8 @@ export default function ProfilPage() {
               {/* Avatar */}
               <div className="relative flex-shrink-0">
                 <div className="w-24 h-24 rounded-full border-4 border-white shadow-lg overflow-hidden bg-emerald-100 flex items-center justify-center">
-                  {avatar ? (
-                    <img src={avatar} alt="Photo de profil" className="w-full h-full object-cover" />
+                  {avatar_url ? (
+                    <img src={avatar_url} alt="Photo de profil" className="w-full h-full object-cover" />
                   ) : (
                     <span className="text-3xl font-black text-emerald-800">
                       {user.prenom[0]}{user.nom[0]}
@@ -890,7 +890,7 @@ export default function ProfilPage() {
                   { label: "Ville", val: user.ville, icon: MapPin },
                   { label: "Profession", val: user.profession, icon: Briefcase },
                   { label: "Type de profil", val: "Personne en situation de handicap", icon: Shield },
-                  { label: "Type de handicap", val: user.typeHandicap, icon: CheckCircle },
+                  { label: "Type de handicap", val: user.type_handicap, icon: CheckCircle },
                   { label: "Membre depuis", val: user.membre_depuis, icon: Clock },
                 ].map(item => (
                   <div key={item.label} className="bg-gray-50 border-2 border-gray-100 rounded-xl p-4">
