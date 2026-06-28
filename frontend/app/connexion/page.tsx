@@ -14,19 +14,14 @@ const avantages = [
 ];
 
 export default function ConnexionPage() {
-  const [form, setForm] = useState({ email: "",mot_de_passe: "" });
+  const [form, setForm] = useState({ email: "", mot_de_passe: "" });
   const [showPassword, setShowPassword] = useState(false);
-  const [remember, setRemember] = useState(false);
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState("");
-  const [forgotMode, setForgotMode] = useState(false);
-  const [forgotEmail, setForgotEmail] = useState("");
-  const [forgotSent, setForgotSent] = useState(false);
 
   const setField = (key: keyof typeof form, val: string) =>
     setForm(prev => ({ ...prev, [key]: val }));
 
-  // ✅ CORRECTION ICI (API réelle + mot_de_passe)
   const handleSubmit = async () => {
     if (!form.email || !form.mot_de_passe) {
       setErreur("Veuillez remplir tous les champs.");
@@ -44,7 +39,7 @@ export default function ConnexionPage() {
         },
         body: JSON.stringify({
           email: form.email,
-          mot_de_passe: form.mot_de_passe, // 🔥 IMPORTANT: correction ici
+          mot_de_passe: form.mot_de_passe,
         }),
       });
 
@@ -54,21 +49,18 @@ export default function ConnexionPage() {
         throw new Error(data.detail || "Email ou mot de passe incorrect");
       }
 
-      console.log("LOGIN SUCCESS:", data);
+      // 🔥 IMPORTANT : stockage session
+      localStorage.setItem("token", data.access_token || "");
+      localStorage.setItem("user", JSON.stringify(data.user));
+
+      // 🔥 redirection profil
+      window.location.href = "/profil";
 
     } catch (err: any) {
       setErreur(err.message);
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleForgot = async () => {
-    if (!forgotEmail) return;
-    setLoading(true);
-    await new Promise(r => setTimeout(r, 1000));
-    setLoading(false);
-    setForgotSent(true);
   };
 
   return (
@@ -99,7 +91,7 @@ export default function ConnexionPage() {
         </div>
       </div>
 
-      {/* ===== PANNEAU DROIT ===== */}
+      {/* ===== DROITE ===== */}
       <div className="flex-1 flex items-center justify-center p-6">
 
         <div className="w-full max-w-md">
@@ -113,7 +105,6 @@ export default function ConnexionPage() {
             </div>
           )}
 
-          {/* EMAIL */}
           <input
             type="email"
             placeholder="Email"
@@ -122,10 +113,9 @@ export default function ConnexionPage() {
             className="w-full p-3 border rounded-xl mb-3"
           />
 
-          {/* PASSWORD */}
           <div className="relative mb-4">
             <input
-            type={showPassword ? "text" : "password"}
+              type={showPassword ? "text" : "password"}
               placeholder="Mot de passe"
               value={form.mot_de_passe}
               onChange={(e) => setField("mot_de_passe", e.target.value)}
@@ -141,7 +131,6 @@ export default function ConnexionPage() {
             </button>
           </div>
 
-          {/* BUTTON */}
           <button
             onClick={handleSubmit}
             disabled={loading}
