@@ -2,7 +2,9 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from database import get_db
 from models import Expert
-from routers.users import get_current_user
+from core.deps import get_current_user
+from core.permissions import require_roles
+from models.user import UserRole
 from pydantic import BaseModel
 from typing import List, Optional
 
@@ -122,19 +124,9 @@ def get_expert(expert_id: int, db: Session = Depends(get_db)):
 @router.post("/", response_model=ExpertResponse)
 def create_expert(
     expert_data: ExpertCreate,
-    current_user = Depends(get_current_user),
+    current_user = Depends(require_roles(UserRole.admin)),
     db: Session = Depends(get_db)
 ):
-    """
-    Créer un nouvel expert (seulement admin)
-    """
-    # Vérifier les permissions : seulement admin
-    if current_user.role.value != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous n'avez pas le droit de créer des experts"
-        )
-
     new_expert = Expert(
         nom=expert_data.nom,
         specialite=expert_data.specialite,
@@ -166,19 +158,9 @@ def create_expert(
 def update_expert(
     expert_id: int,
     expert_data: ExpertUpdate,
-    current_user = Depends(get_current_user),
+    current_user = Depends(require_roles(UserRole.admin)),
     db: Session = Depends(get_db)
 ):
-    """
-    Mettre à jour un expert (seulement admin)
-    """
-    # Vérifier les permissions : seulement admin
-    if current_user.role.value != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous n'avez pas le droit de modifier des experts"
-        )
-
     expert = db.query(Expert).filter(Expert.id == expert_id).first()
     if not expert:
         raise HTTPException(
@@ -210,19 +192,9 @@ def update_expert(
 @router.delete("/{expert_id}")
 def delete_expert(
     expert_id: int,
-    current_user = Depends(get_current_user),
+    current_user = Depends(require_roles(UserRole.admin)),
     db: Session = Depends(get_db)
 ):
-    """
-    Supprimer un expert (seulement admin)
-    """
-    # Vérifier les permissions : seulement admin
-    if current_user.role.value != "admin":
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous n'avez pas le droit de supprimer des experts"
-        )
-
     expert = db.query(Expert).filter(Expert.id == expert_id).first()
     if not expert:
         raise HTTPException(

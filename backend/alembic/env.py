@@ -16,7 +16,7 @@ load_dotenv()
 
 # Importe la Base des modèles
 from database import Base
-from models import User, Post, Commentaire, Podcast, Temoignage, Job, Expert
+from models import User, Post, Commentaire, Podcast, Temoignage, Job, Expert, Forum, Like, Share, Message, Notification, Ressource, AnnuaireService, Photo
 
 # Récupère la DATABASE_URL du fichier .env
 DATABASE_URL = os.getenv("DATABASE_URL")

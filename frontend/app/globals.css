@@ -1,0 +1,57 @@
+@import "tailwindcss";
+
+/* ===== TAILLE DE POLICE DYNAMIQUE ===== */
+:root { font-size: 17px; }
+[data-fontsize="large"]  { font-size: 20px; }
+[data-fontsize="xlarge"] { font-size: 23px; }
+
+/* ===== CONTRASTE ÉLEVÉ ===== */
+.high-contrast {
+  --tw-text-opacity: 1;
+  filter: contrast(1.4);
+}
+.high-contrast body { background: #fff; color: #000; }
+.high-contrast a { color: #00f; text-decoration: underline; }
+
+/* ===== ESPACEMENT LETTRES (dyslexie) ===== */
+.wide-spacing * {
+  letter-spacing: 0.08em;
+  word-spacing: 0.16em;
+  line-height: 2;
+}
+
+/* ===== SKIP LINK (navigation clavier) ===== */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 1rem;
+  background: #111;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0 0 0.5rem 0.5rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  z-index: 9999;
+  text-decoration: none;
+  transition: top 0.2s;
+}
+.skip-link:focus { top: 0; }
+
+/* ===== FOCUS VISIBLE (navigation clavier) ===== */
+*:focus-visible {
+  outline: 3px solid #111;
+  outline-offset: 3px;
+  border-radius: 4px;
+}
+
+/* ===== ZONES CLIQUABLES MINIMUM 48px ===== */
+button, a, [role="button"] {
+  min-height: 44px;
+  min-width: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+nav a, .nav-link {
+  min-height: 36px;
+}

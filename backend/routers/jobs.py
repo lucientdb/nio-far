@@ -1,19 +1,18 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from database import get_db
 from models import User, Job
-from routers.users import get_current_user
+from models.user import UserRole
+from core.deps import get_current_user
+from core.permissions import require_roles, JOB_POSTER_ROLES, has_role
 from pydantic import BaseModel
 from typing import List, Optional
 from datetime import datetime
 
-# Créer le router pour les routes des offres d'emploi
 router = APIRouter()
 
-# Modèles Pydantic pour les requêtes et réponses
 
 class JobResponse(BaseModel):
-    """Modèle pour une offre d'emploi dans les réponses"""
     id: int
     titre: str
     entreprise: str
@@ -21,12 +20,12 @@ class JobResponse(BaseModel):
     lieu: Optional[str]
     type_contrat: Optional[str]
     est_actif: bool
-    auteur: dict  # {id, nom, prenom, avatar_url}
+    auteur: dict
     expire_le: Optional[str]
     cree_le: str
 
+
 class JobCreate(BaseModel):
-    """Modèle pour créer une nouvelle offre d'emploi"""
     titre: str
     entreprise: str
     description: str
@@ -34,8 +33,8 @@ class JobCreate(BaseModel):
     type_contrat: Optional[str] = None
     expire_le: Optional[datetime] = None
 
+
 class JobUpdate(BaseModel):
-    """Modèle pour mettre à jour une offre d'emploi"""
     titre: Optional[str] = None
     entreprise: Optional[str] = None
     description: Optional[str] = None
@@ -44,195 +43,122 @@ class JobUpdate(BaseModel):
     est_actif: Optional[bool] = None
     expire_le: Optional[datetime] = None
 
-# Routes des offres d'emploi
+
+def _job_dict(job: Job) -> dict:
+    return {
+        "id": job.id,
+        "titre": job.titre,
+        "entreprise": job.entreprise,
+        "description": job.description,
+        "lieu": job.lieu,
+        "type_contrat": job.type_contrat,
+        "est_actif": job.est_actif,
+        "auteur": {
+            "id": job.auteur.id,
+            "nom": job.auteur.nom,
+            "prenom": job.auteur.prenom,
+            "avatar_url": job.auteur.avatar_url,
+        },
+        "expire_le": job.expire_le.isoformat() if job.expire_le else None,
+        "cree_le": job.cree_le.isoformat(),
+    }
+
 
 @router.get("/", response_model=List[JobResponse])
 def get_jobs(
     skip: int = Query(0, ge=0),
-    limit: int = Query(10, ge=1, le=100),
+    limit: int = Query(20, ge=1, le=100),
     active_only: bool = Query(True),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Récupérer la liste des offres d'emploi
-    - skip: nombre d'offres à sauter (pagination)
-    - limit: nombre maximum d'offres à retourner
-    - active_only: si True, ne retourne que les offres actives
-    """
-    query = db.query(Job)
-
+    query = db.query(Job).options(joinedload(Job.auteur))
     if active_only:
         query = query.filter(Job.est_actif == True)
 
     jobs = query.order_by(Job.cree_le.desc()).offset(skip).limit(limit).all()
+    return [_job_dict(j) for j in jobs]
 
-    result = []
-    for job in jobs:
-        result.append(JobResponse(
-            id=job.id,
-            titre=job.titre,
-            entreprise=job.entreprise,
-            description=job.description,
-            lieu=job.lieu,
-            type_contrat=job.type_contrat,
-            est_actif=job.est_actif,
-            auteur={
-                "id": job.auteur.id,
-                "nom": job.auteur.nom,
-                "prenom": job.auteur.prenom,
-                "avatar_url": job.auteur.avatar_url
-            },
-            expire_le=job.expire_le.isoformat() if job.expire_le else None,
-            cree_le=job.cree_le.isoformat()
-        ))
 
-    return result
+@router.get("/me")
+def my_jobs(
+    current_user: User = Depends(require_roles(UserRole.entreprise, UserRole.ong, UserRole.admin)),
+    db: Session = Depends(get_db),
+):
+    jobs = (
+        db.query(Job)
+        .options(joinedload(Job.auteur))
+        .filter(Job.user_id == current_user.id)
+        .order_by(Job.cree_le.desc())
+        .all()
+    )
+    return [_job_dict(j) for j in jobs]
+
 
 @router.get("/{job_id}", response_model=JobResponse)
 def get_job(job_id: int, db: Session = Depends(get_db)):
-    """
-    Récupérer une offre d'emploi spécifique
-    """
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(Job).options(joinedload(Job.auteur)).filter(Job.id == job_id).first()
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Offre d'emploi non trouvée"
-        )
+        raise HTTPException(status_code=404, detail="Offre non trouvée")
+    return _job_dict(job)
 
-    return JobResponse(
-        id=job.id,
-        titre=job.titre,
-        entreprise=job.entreprise,
-        description=job.description,
-        lieu=job.lieu,
-        type_contrat=job.type_contrat,
-        est_actif=job.est_actif,
-        auteur={
-            "id": job.auteur.id,
-            "nom": job.auteur.nom,
-            "prenom": job.auteur.prenom,
-            "avatar_url": job.auteur.avatar_url
-        },
-        expire_le=job.expire_le.isoformat() if job.expire_le else None,
-        cree_le=job.cree_le.isoformat()
-    )
 
-@router.post("/", response_model=JobResponse)
+@router.post("/", response_model=JobResponse, status_code=status.HTTP_201_CREATED)
 def create_job(
     job_data: JobCreate,
-    current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    current_user: User = Depends(require_roles(UserRole.entreprise, UserRole.ong, UserRole.admin)),
+    db: Session = Depends(get_db),
 ):
-    """
-    Créer une nouvelle offre d'emploi
-    """
-    new_job = Job(
+    job = Job(
         titre=job_data.titre,
         entreprise=job_data.entreprise,
         description=job_data.description,
         lieu=job_data.lieu,
         type_contrat=job_data.type_contrat,
         expire_le=job_data.expire_le,
-        user_id=current_user.id
+        user_id=current_user.id,
     )
-
-    db.add(new_job)
+    db.add(job)
     db.commit()
-    db.refresh(new_job)
+    db.refresh(job)
+    job.auteur = current_user
+    return _job_dict(job)
 
-    return JobResponse(
-        id=new_job.id,
-        titre=new_job.titre,
-        entreprise=new_job.entreprise,
-        description=new_job.description,
-        lieu=new_job.lieu,
-        type_contrat=new_job.type_contrat,
-        est_actif=new_job.est_actif,
-        auteur={
-            "id": current_user.id,
-            "nom": current_user.nom,
-            "prenom": current_user.prenom,
-            "avatar_url": current_user.avatar_url
-        },
-        expire_le=new_job.expire_le.isoformat() if new_job.expire_le else None,
-        cree_le=new_job.cree_le.isoformat()
-    )
 
 @router.put("/{job_id}", response_model=JobResponse)
 def update_job(
     job_id: int,
     job_data: JobUpdate,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Mettre à jour une offre d'emploi (seulement l'auteur ou un modérateur/admin)
-    """
-    job = db.query(Job).filter(Job.id == job_id).first()
+    job = db.query(Job).options(joinedload(Job.auteur)).filter(Job.id == job_id).first()
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Offre d'emploi non trouvée"
-        )
+        raise HTTPException(status_code=404, detail="Offre non trouvée")
 
-    # Vérifier les permissions : auteur ou modérateur/admin
-    if job.user_id != current_user.id and current_user.role.value not in ["moderateur", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous n'avez pas le droit de modifier cette offre d'emploi"
-        )
+    if job.user_id != current_user.id and not has_role(current_user, UserRole.admin):
+        raise HTTPException(status_code=403, detail="Modification non autorisée")
 
-    # Mettre à jour les champs fournis
-    update_data = job_data.dict(exclude_unset=True)
-    for field, value in update_data.items():
+    for field, value in job_data.model_dump(exclude_unset=True).items():
         setattr(job, field, value)
 
     db.commit()
     db.refresh(job)
+    return _job_dict(job)
 
-    return JobResponse(
-        id=job.id,
-        titre=job.titre,
-        entreprise=job.entreprise,
-        description=job.description,
-        lieu=job.lieu,
-        type_contrat=job.type_contrat,
-        est_actif=job.est_actif,
-        auteur={
-            "id": job.auteur.id,
-            "nom": job.auteur.nom,
-            "prenom": job.auteur.prenom,
-            "avatar_url": job.auteur.avatar_url
-        },
-        expire_le=job.expire_le.isoformat() if job.expire_le else None,
-        cree_le=job.cree_le.isoformat()
-    )
 
 @router.delete("/{job_id}")
 def delete_job(
     job_id: int,
     current_user: User = Depends(get_current_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    """
-    Supprimer une offre d'emploi (seulement l'auteur ou un modérateur/admin)
-    """
     job = db.query(Job).filter(Job.id == job_id).first()
     if not job:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Offre d'emploi non trouvée"
-        )
+        raise HTTPException(status_code=404, detail="Offre non trouvée")
 
-    # Vérifier les permissions
-    if job.user_id != current_user.id and current_user.role.value not in ["moderateur", "admin"]:
-        raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN,
-            detail="Vous n'avez pas le droit de supprimer cette offre d'emploi"
-        )
+    if job.user_id != current_user.id and not has_role(current_user, UserRole.admin):
+        raise HTTPException(status_code=403, detail="Suppression non autorisée")
 
     db.delete(job)
     db.commit()
-
-    return {"message": "Offre d'emploi supprimée avec succès"}
+    return {"message": "Offre supprimée"}

@@ -354,7 +354,7 @@ Pendant que vous développez semaine 1, je vais créer:
 - ✅ Home Feed (Endpoint agregé)
 
 **Donc préparez:**
-- Composants Articles
+- Composants Articles 
 - Formulaire créer post
 - Formulaire ajouter article
 - Formulaire postuler job
