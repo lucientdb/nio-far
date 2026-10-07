@@ -1,15 +1,16 @@
 import axios from "axios";
 import { getToken, logout } from "./auth";
-
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+import { getApiBaseUrl } from "./config";
 
 const api = axios.create({
-  baseURL: API_URL,
+  baseURL: getApiBaseUrl(),
   headers: { "Content-Type": "application/json" },
-  timeout: 30000, // Augmenté à 30 secondes
+  timeout: 30000,
 });
 
 api.interceptors.request.use((config) => {
+  // Resolve baseURL at request time (SSR vs browser).
+  config.baseURL = getApiBaseUrl();
   const token = getToken();
   config.headers = config.headers ?? {};
   if (token) {

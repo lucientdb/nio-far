@@ -3,12 +3,13 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDashboardPath, getToken, getStoredUser } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/config";
 import {
   Mail, Lock, Eye, EyeOff, ArrowRight,
   CheckCircle, AlertCircle,
 } from "lucide-react";
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+const API = getApiBaseUrl();
 
 function parseDetail(detail: unknown): string {
   if (typeof detail === "string") return detail;

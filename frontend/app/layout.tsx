@@ -4,6 +4,7 @@ import "./globals.css";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import AccessibilityWidget from "@/components/AccessibilityWidget";
+import ScrollToTop from "@/components/ScrollToTop";
 
 const geist = Geist({ subsets: ["latin"] });
 
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr" suppressHydrationWarning>
       <body className={`${geist.className} bg-white text-gray-900 antialiased`}>
+        <ScrollToTop />
         {/* Skip link navigation clavier */}
         <a href="#main-content" className="skip-link">
           Aller au contenu principal

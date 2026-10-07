@@ -1,8 +1,9 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import { getJobs, type Job } from "@/services/jobs";
 import { getStoredUser } from "@/lib/auth";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import {
   Search, MapPin, Briefcase, Clock, ChevronRight, Filter,
   X, Building2, ArrowRight, CheckCircle, Star, Bookmark,
@@ -78,9 +79,15 @@ function jobToOffre(j: Job, index: number): Offre {
 
 // ---- Modal détail offre ----
 function ModalOffre({ offre, onClose }: { offre: Offre; onClose: () => void }) {
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
+  
   return (
-    <div role="dialog" aria-modal="true" aria-labelledby="modal-offre-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm" onClick={onClose}>
-      <div onClick={(e) => e.stopPropagation()} className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+    <div role="dialog" aria-modal="true" aria-labelledby="modal-offre-title" className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
 
         {/* Header */}
         <div className="sticky top-0 bg-white z-10 px-7 py-5 border-b border-gray-100 flex items-start justify-between gap-4">

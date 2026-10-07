@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useRouter } from "next/navigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
 import {
   Heart, Plus, Search, X, ChevronRight, Quote,
   MapPin, Briefcase, GraduationCap, Users, Filter,
@@ -71,6 +72,12 @@ function ModalPartage({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
   });
   const [loading, setLoading] = useState(false);
   const [erreur, setErreur] = useState("");
+  
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
 
   useEffect(() => {
     getServices().then(setServices).catch(console.error);
@@ -105,7 +112,7 @@ function ModalPartage({ onClose, onSuccess }: { onClose: () => void; onSuccess: 
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between px-7 py-5 border-b-2 border-gray-100 sticky top-0 bg-white z-10">
           <div>
             <h2 className="text-xl font-black text-gray-900">Noter un service & témoigner</h2>

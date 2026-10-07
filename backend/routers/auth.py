@@ -230,9 +230,17 @@ def register(user_data: UserCreate, db: Session = Depends(get_db)):
             )
 
         role = PROFILE_TO_ROLE.get(user_data.profil or "personne", UserRole.user)
+        nom = user_data.nom
+        prenom = user_data.prenom
+        if role in (UserRole.entreprise, UserRole.ong):
+            org = (user_data.entreprise_nom or "").strip()
+            if not (nom or "").strip():
+                nom = org
+            if not (prenom or "").strip():
+                prenom = org
         new_user = User(
-            nom=user_data.nom,
-            prenom=user_data.prenom,
+            nom=nom or "",
+            prenom=prenom or "",
             username=user_data.username,
             email=user_data.email.lower(),
             mot_de_passe=hash_password(user_data.mot_de_passe),

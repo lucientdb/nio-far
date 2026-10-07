@@ -1,11 +1,12 @@
 "use client";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   Home, MessageCircle, Mic, Briefcase, BookOpen,
   ShieldCheck, User, LogOut, ChevronDown, Heart, Menu, X, Bell, MessageSquare
 } from "lucide-react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 const links = [
   { href: "/", label: "Accueil", icon: Home },
@@ -26,11 +27,20 @@ export default function Navbar() {
   const [notifications, setNotifications] = useState<any[]>([]);
   const [unreadMessages, setUnreadMessages] = useState(0);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const menuRef = useRef<HTMLDivElement>(null);
-  const notifRef = useRef<HTMLDivElement>(null);
-  const mobileNotifRef = useRef<HTMLDivElement>(null);
   const mobileRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  
+  const handleMenuClose = useCallback(() => {
+    setMenuOpen(false);
+  }, []);
+  
+  const handleNotifClose = useCallback(() => {
+    setNotificationsOpen(false);
+  }, []);
+  
+  const menuRef = useClickOutside<HTMLDivElement>(handleMenuClose);
+  const notifRef = useClickOutside<HTMLDivElement>(handleNotifClose);
+  const mobileNotifRef = useClickOutside<HTMLDivElement>(handleNotifClose);
 
   const loadUser = () => {
     const token = localStorage.getItem("token");
@@ -101,18 +111,9 @@ export default function Navbar() {
     };
   }, []);
 
-  // Fermer les menus si clic extérieur
+  // Fermer le menu mobile si clic extérieur (garde la logique manuelle pour mobile)
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (menuRef.current && !menuRef.current.contains(event.target as Node)) {
-        setMenuOpen(false);
-      }
-      if (
-        (notifRef.current && !notifRef.current.contains(event.target as Node)) &&
-        (!mobileNotifRef.current || !mobileNotifRef.current.contains(event.target as Node))
-      ) {
-        setNotificationsOpen(false);
-      }
       if (
         mobileRef.current &&
         !mobileRef.current.contains(event.target as Node) &&
@@ -153,10 +154,10 @@ export default function Navbar() {
 
   return (
     <header className="relative border-b-2 border-emerald-700 bg-white sticky top-0 z-50 shadow-md">
-      <div className="max-w-7xl mx-auto px-6 py-4 flex items-center justify-between">
+      <div className="max-w-7xl mx-auto px-6 py-2 flex items-center justify-between">
         {/* Logo */}
-        <Link href="/" className="flex items-center gap-2 group md:min-w-[280px]">
-          <img src="/logo.png" alt="Nio Far" className="md:h-[120px] h-10 w-auto max-w-[300px] object-contain" />
+        <Link href="/" className="flex items-center gap-2 group md:min-w-[200px]">
+          <img src="/logo.png" alt="Nio Far" className="md:h-[60px] h-10 w-auto max-w-[180px] object-contain" />
         </Link>
 
         {/* Mobile icons & hamburger button */}

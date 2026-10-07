@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import {
   MessageSquare, Search, Plus, Heart, Share2, Eye, Clock, ChevronRight, Loader2
@@ -9,6 +9,7 @@ import { getForums, getForumPosts, createPost, toggleLike, sharePost, type Forum
 import { searchUsers } from "@/services/users";
 import { getStoredUser, isAuthenticated } from "@/lib/auth";
 import { useRouter } from "next/navigation";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -40,6 +41,19 @@ export default function ForumPage() {
   const [shareMessage, setShareMessage] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
   const [shareFeedback, setShareFeedback] = useState("");
+  
+  const handleModalClose = useCallback(() => {
+    setShowModal(false);
+  }, []);
+  
+  const handleShareModalClose = useCallback(() => {
+    setShareModalVisible(false);
+    setShareLoading(false);
+    setShareFeedback("");
+  }, []);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleModalClose);
+  const shareModalRef = useClickOutside<HTMLDivElement>(handleShareModalClose);
 
   useEffect(() => {
     getForums()
@@ -278,7 +292,7 @@ export default function ForumPage() {
 
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+          <div ref={modalRef} className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl">
             <h2 className="text-lg font-black mb-4">Nouveau sujet</h2>
             <p className="text-sm text-gray-500 mb-4">
               Forum : {forums.find((f) => f.id === selectedForum)?.titre}
@@ -323,7 +337,7 @@ export default function ForumPage() {
 
       {shareModalVisible && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div ref={shareModalRef} className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
             <div className="flex items-center justify-between mb-5">
               <h2 className="text-lg font-black text-gray-900">Partager ce post</h2>
               <button type="button" onClick={closeShareModal} className="p-1.5 hover:bg-gray-100 rounded-lg transition-colors">

@@ -1,6 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.requests import Request
+from starlette.responses import Response
 
 app = FastAPI(
     title="Inclusion Sénégal API",
@@ -15,13 +18,35 @@ origins = [
     "https://ton-site.vercel.app",
 ]
 
+# LAN / localhost variants (e.g. http://10.x.x.x:3000) for local device testing
+ORIGIN_REGEX = (
+    r"https?://("
+    r"localhost|127\.0\.0\.1|"
+    r"10\.\d{1,3}\.\d{1,3}\.\d{1,3}|"
+    r"192\.168\.\d{1,3}\.\d{1,3}|"
+    r"172\.(1[6-9]|2\d|3[0-1])\.\d{1,3}\.\d{1,3}"
+    r")(:\d+)?"
+)
+
+
+class PrivateNetworkMiddleware(BaseHTTPMiddleware):
+    """Allow Chrome Private Network Access preflights (LAN page → 127.0.0.1 API)."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        response = await call_next(request)
+        response.headers["Access-Control-Allow-Private-Network"] = "true"
+        return response
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=origins,
+    allow_origin_regex=ORIGIN_REGEX,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(PrivateNetworkMiddleware)
 
 
 @app.get("/")

@@ -7,6 +7,7 @@ import { ArrowLeft, Heart, Share2, Send, Search, Loader2 } from "lucide-react";
 import { getPost, toggleLike, sharePost, addComment, type Post } from "@/services/forums";
 import { searchUsers } from "@/services/users";
 import { isAuthenticated } from "@/lib/auth";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 export default function PostDetailPage() {
   const params = useParams();
@@ -24,6 +25,17 @@ export default function PostDetailPage() {
   const [shareMessage, setShareMessage] = useState("");
   const [shareLoading, setShareLoading] = useState(false);
   const [shareFeedback, setShareFeedback] = useState("");
+  
+  const handleShareModalClose = useCallback(() => {
+    setShareModalVisible(false);
+    setShareReceiverId(undefined);
+    setShareUserSearch("");
+    setShareSearchResults([]);
+    setShareMessage("");
+    setShareFeedback("");
+  }, []);
+  
+  const shareModalRef = useClickOutside<HTMLDivElement>(handleShareModalClose);
 
   const load = useCallback(
     () => getPost(postId).then(setPost).catch(() => router.push("/forum")),
@@ -93,7 +105,7 @@ export default function PostDetailPage() {
 
         {shareModalVisible && (
           <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
-            <div className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl">
+            <div ref={shareModalRef} className="bg-white rounded-2xl w-full max-w-lg p-6 shadow-2xl">
               <h2 className="text-lg font-black mb-4">Partager ce post</h2>
               <div className="space-y-4 mb-4">
                 <div className="grid gap-3 sm:grid-cols-3">

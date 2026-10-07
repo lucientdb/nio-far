@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import Link from "next/link";
 import {
   BookOpen, Search, ChevronRight, ArrowRight,
@@ -10,6 +10,7 @@ import {
 import { getRessources, type Ressource as ApiRessource } from "@/services/ressources";
 import { getExperts, type Expert as ApiExpert } from "@/services/experts";
 import { getPublicStats, type PublicStats } from "@/services/stats";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // ---- Types ----
 type Ressource = {
@@ -287,6 +288,12 @@ function ModalContact({
   const [message, setMessage] = useState("");
   const [sujet, setSujet] = useState("");
   const [envoye, setEnvoye] = useState(false);
+  
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
 
   const handleEnvoi = async () => {
     if (!message.trim() || !sujet.trim()) return;
@@ -296,7 +303,7 @@ function ModalContact({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto">
 
         <div className="sticky top-0 bg-white z-10 px-7 py-5 border-b-2 border-gray-100 flex items-center justify-between">
           <div className="flex items-center gap-3">

@@ -1,6 +1,7 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Accessibility, ZoomIn, ZoomOut, Sun, Type, X } from "lucide-react";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 type A11ySettings = {
   fontSize: "normal" | "large" | "xlarge";
@@ -21,6 +22,12 @@ export default function AccessibilityWidget() {
   const [typedChars, setTypedChars] = useState(0);
 
   const textChars = "Personnalise l'affichage".split("");
+  
+  const handleClose = useCallback(() => {
+    setOpen(false);
+  }, []);
+  
+  const widgetRef = useClickOutside<HTMLDivElement>(handleClose);
 
   useEffect(() => {
     // Fait apparaître le tooltip après 1 seconde
@@ -143,6 +150,7 @@ export default function AccessibilityWidget() {
       {/* Panneau */}
       {open && (
         <div
+          ref={widgetRef}
           role="dialog"
           aria-label="Options d'accessibilité"
           className="fixed bottom-24 right-6 z-50 bg-white border border-gray-200 rounded-2xl shadow-2xl w-72 overflow-hidden"

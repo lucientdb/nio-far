@@ -4,10 +4,10 @@ import { Heart, Mail, MessageCircle } from "lucide-react";
 export default function Footer() {
   return (
     <footer className="bg-white text-gray-900 mt-20 border-t border-emerald-700">
-      <div className="max-w-7xl mx-auto px-6 py-16">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-12">
-          <div>
-            <img src="/logo.png" alt="Nio Far" className="h-78 w-auto object-contain mb-4" />
+      <div className="max-w-7xl mx-auto px-6 py-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-10 mb-8">
+          <div className="flex flex-col h-full">
+            <img src="/logo.png" alt="Nio Far" className="h-32 w-auto object-contain mb-4" />
             <p className="text-sm leading-relaxed text-gray-700 max-w-xl">
               Nio Far accompagne les personnes en situation de handicap au Sénégal avec des ressources, des forums, des offres d'emploi et des services engagés.
             </p>
@@ -42,7 +42,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="border-t border-emerald-700 pt-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-gray-600">
+        <div className="border-t border-emerald-700 pt-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4 text-sm text-gray-600">
           <p>© 2026 Nio Far — Tous droits réservés</p>
           <p className="flex items-center gap-2 text-gray-600">
             <Heart className="h-4 w-4 text-emerald-700" /> Construit pour l'inclusion

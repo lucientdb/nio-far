@@ -118,9 +118,69 @@ def update_my_profile(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    for field, value in user_data.model_dump(exclude_unset=True).items():
+    from sqlalchemy.exc import IntegrityError
+
+    data = user_data.model_dump(exclude_unset=True)
+
+    # Normalize optional blank strings
+    if "username" in data and data["username"] is not None:
+        data["username"] = data["username"].strip() or None
+
+    # Org accounts often have empty nom/prenom — keep NOT NULL columns valid
+    if current_user.role in (UserRole.entreprise, UserRole.ong):
+        org_name = (data.get("entreprise_nom") or current_user.entreprise_nom or "").strip()
+        if "nom" in data and not (data["nom"] or "").strip():
+            data["nom"] = org_name or current_user.nom or ""
+        if "prenom" in data and not (data["prenom"] or "").strip():
+            data["prenom"] = org_name or current_user.prenom or ""
+        if data.get("nom") is None:
+            data["nom"] = org_name or current_user.nom or ""
+        if data.get("prenom") is None:
+            data["prenom"] = org_name or current_user.prenom or ""
+
+    for required in ("nom", "prenom"):
+        if required in data and data[required] is None:
+            data[required] = current_user.nom if required == "nom" else current_user.prenom
+            if data[required] is None:
+                data[required] = ""
+
+    if data.get("username"):
+        taken = (
+            db.query(User)
+            .filter(
+                func.lower(User.username) == data["username"].lower(),
+                User.id != current_user.id,
+            )
+            .first()
+        )
+        if taken:
+            raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est déjà pris")
+    if data.get("email"):
+        taken = (
+            db.query(User)
+            .filter(
+                func.lower(User.email) == str(data["email"]).lower(),
+                User.id != current_user.id,
+            )
+            .first()
+        )
+        if taken:
+            raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+
+    for field, value in data.items():
         setattr(current_user, field, value)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError as exc:
+        db.rollback()
+        err = str(getattr(exc, "orig", exc)).lower()
+        if "username" in err:
+            raise HTTPException(status_code=400, detail="Ce nom d'utilisateur est déjà pris")
+        if "email" in err:
+            raise HTTPException(status_code=400, detail="Cet email est déjà utilisé")
+        if "not-null" in err or "null value" in err:
+            raise HTTPException(status_code=400, detail="Le nom et le prénom sont obligatoires")
+        raise HTTPException(status_code=400, detail="Impossible de mettre à jour le profil")
     db.refresh(current_user)
     return _profile(current_user, db)
 

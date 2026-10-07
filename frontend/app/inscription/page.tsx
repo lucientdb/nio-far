@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getDashboardPath, getToken, getStoredUser } from "@/lib/auth";
+import { getApiBaseUrl } from "@/lib/config";
 import {
   User, Mail, Lock, Eye, EyeOff, CheckCircle,
   ArrowRight, ArrowLeft, ChevronRight, Accessibility,
@@ -11,7 +12,7 @@ import {
 
 // ---- Types ----
 type Etape = 1 | 2 | 3 | 4;
-type Profil = "personne" | "association" | "recruteur" | "expert" | "";
+type Profil = "personne" | "organisation" | "expert" | "";
 
 // ---- Données ----
 const profils: {
@@ -27,15 +28,9 @@ const profils: {
     icon: Accessibility,
   },
   {
-    key: "association",
-    label: "Association ou ONG",
-    desc: "Publiez des actualités, gérez votre page et vos événements.",
-    icon: Heart,
-  },
-  {
-    key: "recruteur",
-    label: "Recruteur / Entreprise",
-    desc: "Publiez des offres d'emploi adaptées et recrutez.",
+    key: "organisation",
+    label: "Organisation (Entreprise, ONG, Association)",
+    desc: "Publiez des offres d'emploi, gérez vos événements et actualités.",
     icon: Briefcase,
   },
   {
@@ -71,8 +66,21 @@ export default function InscriptionPage() {
   const [stats, setStats] = useState<any>(null);
   const router = useRouter();
 
+  // Auto-avancer à l'étape 2 quand un profil est sélectionné
   useEffect(() => {
-    fetch("http://127.0.0.1:8000/api/stats/public")
+    if (profil && etape === 1) {
+      // Petit délai pour l'animation visuelle
+      const timer = setTimeout(() => {
+        setEtape(2);
+        // Scroll vers le haut de la zone de formulaire
+        window.scrollTo({ top: 0, behavior: 'smooth' });
+      }, 300);
+      return () => clearTimeout(timer);
+    }
+  }, [profil, etape]);
+
+  useEffect(() => {
+    fetch(`${getApiBaseUrl()}/api/stats/public`)
       .then(res => res.json())
       .then(data => setStats(data))
       .catch(() => {});
@@ -94,7 +102,9 @@ export default function InscriptionPage() {
     mot_de_passe: "",
     confirm: "",
     ville: "",
+    ville_autre: "", // Pour saisie libre quand "Autre" est sélectionné
     type_handicap: "",
+    type_organisation: "", // "entreprise", "ong", "association"
     entreprise_nom: "",
     contact: "",
     domaine_intervention: "",
@@ -111,7 +121,7 @@ export default function InscriptionPage() {
   const [loadingOtp, setLoadingOtp] = useState(false);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
+  const API = getApiBaseUrl();
 
   const createAccount = async () => {
     if (!etape2Ok) return;
@@ -127,9 +137,9 @@ export default function InscriptionPage() {
           username: form.username,
           email: form.email,
           mot_de_passe: form.mot_de_passe,
-          profil: profil || "personne",
+          profil: profil === "organisation" ? (form.type_organisation === "entreprise" ? "recruteur" : "association") : (profil || "personne"),
           type_handicap: form.type_handicap,
-          ville: form.ville,
+          ville: form.ville === "Autre" ? form.ville_autre : form.ville,
           bio: "",
           entreprise_nom: form.entreprise_nom,
           contact: form.contact,
@@ -219,9 +229,10 @@ export default function InscriptionPage() {
 
   const etape1Ok = profil !== "";
   const etape2Ok = (() => {
-    if (profil === "recruteur" || profil === "association") {
+    if (profil === "organisation") {
       return (
         form.username.trim() !== "" &&
+        form.type_organisation.trim() !== "" &&
         form.entreprise_nom.trim() !== "" &&
         form.contact.trim() !== "" &&
         form.email.trim() !== "" &&
@@ -296,41 +307,49 @@ export default function InscriptionPage() {
         </div>
       </div>
 
-      {/* ===== PANNEAU DROIT ===== */}
-      <div className="flex-1 flex flex-col items-center justify-center p-6 py-12 overflow-y-auto">
-        <div className="w-full max-w-lg">
+      {/* ===== PANNEAU DROIT - LAYOUT FIXE ===== */}
+      <div className="flex-1 flex flex-col h-screen overflow-hidden">
+        
+        {/* HEADER FIXE */}
+        <div className="flex-shrink-0 bg-white border-b border-gray-200 px-6 py-6">
+          <div className="max-w-lg mx-auto">
+            {/* Logo mobile */}
+            <Link href="/" className="flex items-center gap-3 mb-6 lg:hidden">
+              <img src="/logo.png" alt="Logo Nio Far" className="h-12 w-auto object-contain bg-white rounded-xl p-1 border border-gray-200" />
+              <span className="font-black text-gray-900 text-2xl">Nio Far</span>
+            </Link>
 
-          {/* Logo mobile */}
-          <Link href="/" className="flex items-center gap-3 mb-8 lg:hidden">
-            <img src="/logo.png" alt="Logo Nio Far" className="h-12 w-auto object-contain bg-white rounded-xl p-1 border border-gray-200" />
-            <span className="font-black text-gray-900 text-2xl">Nio Far</span>
-          </Link>
-
-          {/* Barre de progression */}
-          <div className="mb-8">
-            <div className="flex items-center justify-between mb-3">
-              <h1 className="text-2xl font-black text-gray-900">Créer mon compte</h1>
-              <span className="text-sm font-bold text-gray-400">Étape {Math.min(etape, 3)} / 3</span>
-            </div>
-            <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-              <div
-                className="h-2 bg-gray-900 rounded-full transition-all duration-500"
-                style={{ width: `${(etape / 3) * 100}%` }}
-              />
-            </div>
-            <div className="flex justify-between mt-2">
-              {["Votre profil", "Vos infos", "Confirmation"].map((label, i) => (
-                <span
-                  key={label}
-                  className={`text-xs font-bold transition-colors ${
-                    etape > i ? "text-gray-900" : "text-gray-300"
-                  }`}
-                >
-                  {label}
-                </span>
-              ))}
+            {/* Barre de progression */}
+            <div>
+              <div className="flex items-center justify-between mb-3">
+                <h1 className="text-2xl font-black text-gray-900">Créer mon compte</h1>
+                <span className="text-sm font-bold text-gray-400">Étape {Math.min(etape, 3)} / 3</span>
+              </div>
+              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                <div
+                  className="h-2 bg-gray-900 rounded-full transition-all duration-500"
+                  style={{ width: `${(etape / 3) * 100}%` }}
+                />
+              </div>
+              <div className="flex justify-between mt-2">
+                {["Votre profil", "Vos infos", "Confirmation"].map((label, i) => (
+                  <span
+                    key={label}
+                    className={`text-xs font-bold transition-colors ${
+                      etape > i ? "text-gray-900" : "text-gray-300"
+                    }`}
+                  >
+                    {label}
+                  </span>
+                ))}
+              </div>
             </div>
           </div>
+        </div>
+
+        {/* ZONE SCROLLABLE */}
+        <div className="flex-1 overflow-y-auto px-6 py-8">
+          <div className="max-w-lg mx-auto">
 
           {/* ===== ÉTAPE 1 : Choix du profil ===== */}
           {etape === 1 && (
@@ -366,26 +385,6 @@ export default function InscriptionPage() {
                   </div>
                 </button>
               ))}
-
-              <div className="flex items-center gap-3">
-                <button type="button" disabled className="p-3 rounded-lg bg-gray-100 text-gray-300">
-                  <ArrowLeft />
-                </button>
-                <button
-                  onClick={() => setEtape(2)}
-                  disabled={!etape1Ok}
-                  className="ml-auto bg-gray-900 text-white font-black text-base py-4 px-6 rounded-xl hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-2 hover:shadow-lg"
-                >
-                  Continuer <ChevronRight size={18} />
-                </button>
-              </div>
-
-              <p className="text-center text-sm font-semibold text-gray-400 mt-2">
-                Déjà membre ?{" "}
-                <Link href="/connexion" className="text-emerald-700 font-black hover:underline">
-                  Se connecter →
-                </Link>
-              </p>
             </div>
           )}
 
@@ -394,9 +393,22 @@ export default function InscriptionPage() {
             <div className="flex flex-col gap-5">
               <p className="text-base font-bold text-gray-500 mb-1">Vos informations personnelles</p>
 
-              {/* ENTREPRISE / ASSOCIATION */}
-              {(profil === "recruteur" || profil === "association") && (
+              {/* ORGANISATION (ENTREPRISE / ONG / ASSOCIATION) */}
+              {profil === "organisation" && (
                 <>
+                  <div>
+                    <label className="text-sm font-black text-gray-700 block mb-2">Type d'organisation *</label>
+                    <select
+                      value={form.type_organisation}
+                      onChange={e => setField("type_organisation", e.target.value)}
+                      className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold bg-white appearance-none cursor-pointer"
+                    >
+                      <option value="">Sélectionner le type</option>
+                      <option value="entreprise">Entreprise / Recruteur</option>
+                      <option value="ong">ONG</option>
+                      <option value="association">Association</option>
+                    </select>
+                  </div>
                   <div>
                     <label className="text-sm font-black text-gray-700 block mb-2">Nom d'utilisateur *</label>
                     <input
@@ -407,17 +419,27 @@ export default function InscriptionPage() {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-black text-gray-700 block mb-2">Nom de l'entreprise / ONG *</label>
+                    <label className="text-sm font-black text-gray-700 block mb-2">
+                      Nom de l'organisation *
+                    </label>
                     <input
                       value={form.entreprise_nom}
                       onChange={e => setField("entreprise_nom", e.target.value)}
-                      placeholder="Nom de l'entreprise"
+                      placeholder={
+                        form.type_organisation === "entreprise" 
+                          ? "Nom de l'entreprise" 
+                          : form.type_organisation === "ong"
+                          ? "Nom de l'ONG"
+                          : form.type_organisation === "association"
+                          ? "Nom de l'association"
+                          : "Nom de l'organisation"
+                      }
                       className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold"
                     />
                   </div>
 
                   <div>
-                    <label className="text-sm font-black text-gray-700 block mb-2">Contact (téléphone)</label>
+                    <label className="text-sm font-black text-gray-700 block mb-2">Contact (téléphone) *</label>
                     <input
                       value={form.contact}
                       onChange={e => setField("contact", e.target.value)}
@@ -434,7 +456,7 @@ export default function InscriptionPage() {
                         type="email"
                         value={form.email}
                         onChange={e => setField("email", e.target.value)}
-                        placeholder="contact@entreprise.com"
+                        placeholder="contact@organisation.com"
                         className="w-full pl-10 pr-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold"
                       />
                     </div>
@@ -450,6 +472,14 @@ export default function InscriptionPage() {
                       <option value="">Sélectionner la ville</option>
                       {villes.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
+                    {form.ville === "Autre" && (
+                      <input
+                        value={form.ville_autre}
+                        onChange={e => setField("ville_autre", e.target.value)}
+                        placeholder="Saisissez votre ville"
+                        className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold mt-3"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -457,7 +487,7 @@ export default function InscriptionPage() {
                     <input
                       value={form.domaine_intervention}
                       onChange={e => setField("domaine_intervention", e.target.value)}
-                      placeholder="Ex: Inclusion en entreprise, Formation"
+                      placeholder="Ex: Inclusion en entreprise, Formation, Aide sociale"
                       className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold"
                     />
                   </div>
@@ -540,6 +570,14 @@ export default function InscriptionPage() {
                       <option value="">Sélectionner la ville</option>
                       {villes.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
+                    {form.ville === "Autre" && (
+                      <input
+                        value={form.ville_autre}
+                        onChange={e => setField("ville_autre", e.target.value)}
+                        placeholder="Saisissez votre ville"
+                        className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold mt-3"
+                      />
+                    )}
                   </div>
                 </>
               )}
@@ -607,6 +645,14 @@ export default function InscriptionPage() {
                       <option value="">Sélectionner votre ville</option>
                       {villes.map(v => <option key={v} value={v}>{v}</option>)}
                     </select>
+                    {form.ville === "Autre" && (
+                      <input
+                        value={form.ville_autre}
+                        onChange={e => setField("ville_autre", e.target.value)}
+                        placeholder="Saisissez votre ville"
+                        className="w-full px-4 py-3.5 text-base border-2 border-gray-200 rounded-xl focus:outline-none focus:border-gray-900 transition-all font-semibold mt-3"
+                      />
+                    )}
                   </div>
 
                   <div>
@@ -689,17 +735,6 @@ export default function InscriptionPage() {
                   </Link>.
                 </span>
               </label>
-
-              {erreurCreate && (<div className="bg-red-50 border-2 border-red-200 p-3 rounded-xl mb-3"><p className="text-red-700 font-bold">{erreurCreate}</p></div>)}
-
-              <div className="flex items-center gap-3">
-                <button type="button" onClick={() => setEtape(Math.max(1, etape - 1) as Etape)} className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 transition-colors">
-                  <ArrowLeft />
-                </button>
-                <button onClick={createAccount} disabled={!etape2Ok || loadingCreate} className="ml-auto bg-gray-900 text-white font-black text-base py-3 px-6 rounded-xl hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2">
-                  {loadingCreate ? "Création..." : "Créer mon compte"} <ArrowRight size={18} />
-                </button>
-              </div>
             </div>
           )}
 
@@ -795,7 +830,50 @@ export default function InscriptionPage() {
             </div>
           )}
 
+          </div>
         </div>
+
+        {/* FOOTER FIXE - Boutons de navigation */}
+        {(etape === 1 || etape === 2) && (
+          <div className="flex-shrink-0 bg-white border-t border-gray-200 px-6 py-4">
+            <div className="max-w-lg mx-auto flex items-center gap-3">
+              {etape === 1 ? (
+                <>
+                  <button type="button" disabled className="p-3 rounded-lg bg-gray-100 text-gray-300">
+                    <ArrowLeft />
+                  </button>
+                  <p className="text-center text-sm font-semibold text-gray-400 flex-1">
+                    Déjà membre ?{" "}
+                    <Link href="/connexion" className="text-emerald-700 font-black hover:underline">
+                      Se connecter
+                    </Link>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <button 
+                    onClick={() => { setEtape(1); setProfil(""); }} 
+                    className="p-3 rounded-lg bg-gray-100 hover:bg-gray-200 text-gray-700 transition-colors"
+                  >
+                    <ArrowLeft />
+                  </button>
+                  {erreurCreate && (
+                    <div className="flex-1 bg-red-50 border border-red-200 p-3 rounded-xl">
+                      <p className="text-red-700 font-bold text-sm">{erreurCreate}</p>
+                    </div>
+                  )}
+                  <button 
+                    onClick={createAccount} 
+                    disabled={!etape2Ok || loadingCreate} 
+                    className="ml-auto bg-gray-900 text-white font-black text-base py-3 px-6 rounded-xl hover:bg-gray-700 transition-all disabled:opacity-40 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                  >
+                    {loadingCreate ? "Création..." : "Créer mon compte"} <ArrowRight size={18} />
+                  </button>
+                </>
+              )}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

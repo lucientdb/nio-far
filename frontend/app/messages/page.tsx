@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Send, Inbox, ArrowLeft, MessageSquare, User2, Clock,
@@ -13,6 +13,7 @@ import {
 } from "@/services/messaging";
 import { searchUsers } from "@/services/users";
 import AuthPrompt from "@/components/AuthPrompt";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 function timeAgo(dateStr: string) {
   const diff = Date.now() - new Date(dateStr).getTime();
@@ -90,6 +91,17 @@ export default function MessagesPage() {
   const [replyText, setReplyText] = useState("");
   const [replySending, setReplySending] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  const handleComposeClose = useCallback(() => {
+    setComposeOpen(false);
+    setComposeUserId(null);
+    setComposeUserSearch("");
+    setSearchResults([]);
+    setComposeText("");
+    setComposeFeedback("");
+  }, []);
+  
+  const composeModalRef = useClickOutside<HTMLDivElement>(handleComposeClose);
 
   useEffect(() => {
     if (!isAuthenticated()) {
@@ -416,7 +428,7 @@ export default function MessagesPage() {
       {/* Modal Compose */}
       {composeOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
+          <div ref={composeModalRef} className="bg-white rounded-2xl w-full max-w-md shadow-2xl animate-in fade-in slide-in-from-bottom-4 duration-200">
             <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
               <h2 className="text-lg font-black text-gray-900">Nouveau message</h2>
               <button

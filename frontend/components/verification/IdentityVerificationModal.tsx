@@ -7,9 +7,10 @@
  * Usage futur (dans profil/page.tsx) :
  *   <IdentityVerificationModal onClose={...} onSuccess={...} />
  */
-import { useEffect, useState } from "react";
+import { useEffect, useState, useCallback } from "react";
 import { AlertCircle, ArrowRight, ExternalLink, Shield, X } from "lucide-react";
 import { getKycStatus, initiateKyc } from "@/services/users";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 type ApiErrorLike = {
   response?: { data?: { detail?: string } };
@@ -33,6 +34,12 @@ export default function IdentityVerificationModal({
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [hostedUrl, setHostedUrl] = useState<string | null>(null);
   const [polling, setPolling] = useState(false);
+  
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
 
   const startPersona = async () => {
     setLoading(true);
@@ -79,7 +86,7 @@ export default function IdentityVerificationModal({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-gray-100">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-lg border border-gray-100">
         <div className="px-7 py-5 border-b border-gray-100 flex items-center justify-between">
           <div>
             <h2 className="text-xl font-black text-gray-900 flex items-center gap-2">

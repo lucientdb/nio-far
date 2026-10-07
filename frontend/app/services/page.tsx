@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useCallback } from "react";
 import {
   Building2, Scale, Stethoscope, School, Wrench,
   CreditCard, Search, X, ChevronRight, ArrowRight,
@@ -9,6 +9,7 @@ import {
 import type { LucideIcon } from "lucide-react";
 import { getAnnuaireServices, type AnnuaireService } from "@/services/annuaire";
 import { getPublicStats, type PublicStats } from "@/services/stats";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // ---- Types ----
 type Service = {
@@ -198,9 +199,15 @@ function ModalService({
   service: Service;
   onClose: () => void;
 }) {
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
+  
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
 
         {/* Header sticky */}
         <div className="sticky top-0 bg-white z-10 px-7 py-5 border-b-2 border-gray-100 flex items-start justify-between gap-4">

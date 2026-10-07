@@ -1,5 +1,5 @@
 "use client";
-import { useState, useRef, useEffect, useSyncExternalStore } from "react";
+import { useState, useRef, useEffect, useSyncExternalStore, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import {
   Camera, Edit3, CheckCircle, Upload, X, Mic,
@@ -12,6 +12,7 @@ import { getMyProfile, updateMyProfile, uploadAvatar, revokeVerification, change
 import { getMyPosts, createClassicPost, toggleLike } from "@/services/forums";
 import { ROLE_LABELS, getToken } from "@/lib/auth";
 import AuthPrompt from "@/components/AuthPrompt";
+import { useClickOutside } from "@/hooks/useClickOutside";
 
 // ---- Types ----
 type Publication = {
@@ -64,6 +65,12 @@ function ModalPublication({
   const imageRef = useRef<HTMLInputElement>(null);
   const audioRef = useRef<HTMLInputElement>(null);
   const [loading, setLoading] = useState(false);
+  
+  const handleClose = useCallback(() => {
+    onClose();
+  }, [onClose]);
+  
+  const modalRef = useClickOutside<HTMLDivElement>(handleClose);
 
   const canSubmit = titre.trim().length >= 5 && contenu.trim().length >= 20;
 
@@ -84,7 +91,7 @@ function ModalPublication({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-      <div className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
+      <div ref={modalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
 
         {/* Header */}
         <div className="sticky top-0 bg-white z-10 px-7 py-5 border-b-2 border-gray-100 flex items-center justify-between">
@@ -409,6 +416,8 @@ export default function ProfilPage() {
 
   const [editProfile, setEditProfile] = useState(false);
   const [profileForm, setProfileForm] = useState<Partial<UserProfile>>({ email: "" });
+  const [profileError, setProfileError] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
   const [showPasswordForm, setShowPasswordForm] = useState(false);
 
   const [currentPassword, setCurrentPassword] = useState("");
@@ -419,6 +428,12 @@ export default function ProfilPage() {
   const [changingPassword, setChangingPassword] = useState(false);
 
   const avatarRef = useRef<HTMLInputElement>(null);
+  
+  const handleCertificationModalClose = useCallback(() => {
+    setModalCertificationUnavailable(false);
+  }, []);
+  
+  const certificationModalRef = useClickOutside<HTMLDivElement>(handleCertificationModalClose);
 
   useEffect(() => {
     if (!getToken()) {
@@ -480,8 +495,17 @@ export default function ProfilPage() {
 
   const saveProfile = async () => {
     if (!user) return;
+    setProfileError("");
+    setSavingProfile(true);
     try {
-      const updated = await updateMyProfile(profileForm);
+      const payload: Partial<UserProfile> = { ...profileForm };
+      // Org profiles hide nom/prenom — fill from entreprise_nom so NOT NULL cols stay valid
+      if (user.role === "entreprise" || user.role === "ong") {
+        const org = (payload.entreprise_nom || user.entreprise_nom || "").trim();
+        if (!(payload.nom || "").trim()) payload.nom = org;
+        if (!(payload.prenom || "").trim()) payload.prenom = org;
+      }
+      const updated = await updateMyProfile(payload);
       setUser(updated);
       setBio(updated.bio ?? "");
       setProfileForm({
@@ -509,9 +533,16 @@ export default function ProfilPage() {
       }));
       window.dispatchEvent(new Event("auth-change"));
       setEditProfile(false);
-    } catch (err) {
+    } catch (err: unknown) {
       console.error(err);
-      alert("Erreur lors de la sauvegarde du profil");
+      let message = "Erreur lors de la sauvegarde du profil";
+      if (err && typeof err === "object" && "response" in err) {
+        const detail = (err as { response?: { data?: { detail?: unknown } } }).response?.data?.detail;
+        if (typeof detail === "string") message = detail;
+      }
+      setProfileError(message);
+    } finally {
+      setSavingProfile(false);
     }
   };
 
@@ -986,15 +1017,22 @@ export default function ProfilPage() {
                         />
                       </div>
                     </div>
+                    {profileError && (
+                      <p className="mt-3 text-sm font-semibold text-red-600" role="alert">
+                        {profileError}
+                      </p>
+                    )}
                     <div className="flex gap-2 mt-4">
                       <button
                         onClick={saveProfile}
-                        className="flex items-center gap-1.5 bg-gray-900 text-white font-black text-sm px-4 py-2 rounded-xl hover:bg-gray-700 transition-colors"
+                        disabled={savingProfile}
+                        className="flex items-center gap-1.5 bg-gray-900 text-white font-black text-sm px-4 py-2 rounded-xl hover:bg-gray-700 transition-colors disabled:opacity-60"
                       >
-                        <CheckCircle size={14} /> Enregistrer
+                        <CheckCircle size={14} /> {savingProfile ? "Enregistrement…" : "Enregistrer"}
                       </button>
                       <button
                         onClick={() => {
+                          setProfileError("");
                           setProfileForm({
                             nom: user.nom,
                             prenom: user.prenom,
@@ -1269,7 +1307,7 @@ export default function ProfilPage() {
       )}
       {modalCertificationUnavailable && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md">
-          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-gray-100 p-8 text-center">
+          <div ref={certificationModalRef} className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-gray-100 p-8 text-center">
             <div className="w-14 h-14 rounded-full bg-amber-50 border border-amber-100 flex items-center justify-center mx-auto mb-4">
               <Shield size={28} className="text-amber-600" />
             </div>
